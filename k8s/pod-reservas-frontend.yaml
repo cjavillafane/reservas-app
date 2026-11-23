@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Pod
+
+metadata:
+  name: reservas-frontend
+  namespace: reservas-app
+  labels:
+    app: reservas-frontend
+
+spec:
+  containers:
+    - name: frontend
+      image: cristianvillafane/reservas-frontend:v1
+      imagePullPolicy: Always
+
+      ports:
+        - containerPort: 8080
+
+      env:
+        - name: API_HOST
+          value: "reservas-api"
+
+        - name: API_PORT
+          value: "3000"
+
+        - name: NGINX_ENVSUBST_FILTER
+          value: "^API_"

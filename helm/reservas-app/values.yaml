@@ -1,0 +1,52 @@
+images:
+  api:
+    repository: cristianvillafane/reservas-api
+    tag: v1
+  frontend:
+    repository: cristianvillafane/reservas-frontend
+    tag: v1
+  mysql:
+    repository: mysql
+    tag: "8.4"
+
+replicas:
+  api: 2
+  frontend: 2
+  mysql: 1
+
+api:
+  port: 3000
+  seedDemo: "true"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+
+frontend:
+  port: 8080
+
+database:
+  name: reservasdb
+  port: 3306
+  storage: 1Gi
+  storageClassName: ""
+  credentials:
+    user: ""
+    password: ""
+    rootPassword: ""
+
+services:
+  frontend:
+    type: NodePort
+    nodePort: 30301
+
+ingress:
+  host: reservas.local
+  className: ""
+
+hpa:
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilization: 60

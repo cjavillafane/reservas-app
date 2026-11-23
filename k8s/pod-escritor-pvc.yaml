@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Pod
+
+metadata:
+  name: escritor-pvc
+  namespace: reservas-app
+
+spec:
+  restartPolicy: Never
+
+  containers:
+    - name: escritor
+      image: busybox:1.36
+
+      command:
+        - sh
+        - -c
+        - "echo previo > /datos/viejo.txt && ls -la /datos"
+
+      volumeMounts:
+        - name: datos
+          mountPath: /datos
+
+  volumes:
+    - name: datos
+      persistentVolumeClaim:
+        claimName: reservas-db-pvc

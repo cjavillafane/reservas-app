@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: reservas-frontend
+spec:
+  type: {{ .Values.services.frontend.type }}
+  selector:
+    app: reservas-frontend
+  ports:
+    - name: http
+      port: {{ .Values.frontend.port }}
+      targetPort: {{ .Values.frontend.port }}
+      {{- if eq .Values.services.frontend.type "NodePort" }}
+      nodePort: {{ .Values.services.frontend.nodePort }}
+      {{- end }}

@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: reservas-db
+
+spec:
+  replicas: {{ .Values.replicas.mysql }}
+
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: reservas-db
+
+  template:
+    metadata:
+      labels:
+        app: reservas-db
+
+    spec:
+      containers:
+        - name: mysql
+
+          image: "{{ .Values.images.mysql.repository }}:{{ .Values.images.mysql.tag }}"
+
+          ports:
+            - containerPort: {{ .Values.database.port }}
+
+          envFrom:
+            - secretRef:
+                name: reservas-db-secret
+
+          env:
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: reservas-api-config
+                  key: DB_NAME
+
+          volumeMounts:
+            - name: datos
+              mountPath: /var/lib/mysql
+              subPath: mysql
+
+          startupProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - 'mysqladmin ping -h 127.0.0.1 -u root -p"$MYSQL_ROOT_PASSWORD" --silent'
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 24
+
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - 'mysqladmin ping -h 127.0.0.1 -u root -p"$MYSQL_ROOT_PASSWORD" --silent'
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 20
+
+      volumes:
+        - name: datos
+          persistentVolumeClaim:
+            claimName: reservas-db-pvc

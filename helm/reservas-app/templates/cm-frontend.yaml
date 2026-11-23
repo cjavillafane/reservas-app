@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: reservas-frontend-config
+data:
+  API_HOST: "reservas-api"
+  API_PORT: {{ .Values.api.port | quote }}

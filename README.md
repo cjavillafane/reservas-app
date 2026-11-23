@@ -1,42 +1,111 @@
-# Reservas App
+# reservas-app
 
-Aplicación para la reserva de salas y laboratorios por franja horaria.
+Proyecto realizado para el curso de Contenedores, Docker y Orquestación con Kubernetes.
 
-Proyecto integrador de la asignatura Contenedores, Docker y Orquestación con Kubernetes.
+La aplicación permite reservar salas eligiendo una fecha y una franja horaria.
 
-## Arquitectura
+Para desarrollarla utilicé React y Vite para el frontend, Node.js y Express para la API y MySQL 8.4 para guardar las reservas.
 
-    navegador ──► reservas-frontend ──────► reservas-api ──────► reservas-db
-                  React + Vite             Node 20 + Express     MySQL 8.4
-                  nginx :8080              :3000                 :3306
-                  (host 3000)              (host 3001, solo      (sin puerto
-                                            depuración)           publicado)
+También utilicé Docker, Docker Compose, Kubernetes y Helm para ejecutar y desplegar la aplicación.
 
-| Capa | Imagen | Puerto interno | Puerto publicado |
-| --- | --- | --- | --- |
-| `reservas-frontend` | React + Vite servido por nginx | 8080 | 3000 |
-| `reservas-api` | Node 20 + Express | 3000 | 3001 (solo depuración) |
-| `reservas-db` | MySQL 8.4 | 3306 | — |
+## Estructura del proyecto
 
-El frontend es el único punto de entrada: nadie le habla a la base
-directamente, y a la API le habla el frontend.
+- `backend/`: código de la API y su Dockerfile.
+- `frontend/`: aplicación React y su Dockerfile.
+- `docker-compose.yaml`: configuración de Docker Compose.
+- `k8s/`: manifiestos de Kubernetes.
+- `helm/reservas-app/`: chart de Helm.
+- `ARQUITECTURA.md`: respuestas a las preguntas del proyecto final.
+- `INFORME.md`: pruebas y resultados de funcionamiento.
 
-## TP2 - Construcción de imágenes Docker
+## 1. Ejecutar con Docker Compose
 
-### Comparación de imágenes
+Para ejecutar la aplicación necesito tener instalados Docker y Docker Compose.
 
-| Imagen | Imagen base | Tamaño | Reducción respecto de API ingenua |
-| --- | --- | ---: | ---: |
-| API ingenua | `node:20` | 402 MB | — |
-| API definitiva v1 | `node:20-alpine` | 50 MB | 87,56 % |
-| Frontend v1 | `nginxinc/nginx-unprivileged:1.27-alpine` | 21 MB | 94,78 % |
+Desde la carpeta principal del proyecto ejecuto:
 
-### Decisiones adoptadas
+```bash
+docker compose up -d --build
+```
 
-- **Construcción multi-etapa:** permite separar las herramientas necesarias durante la construcción de los componentes requeridos durante la ejecución.
-- **`node:20-alpine`:** utiliza una imagen base mínima, reduciendo considerablemente el tamaño respecto de `node:20`.
-- **`npm ci --omit=dev`:** instala únicamente las dependencias de producción del backend y respeta exactamente las versiones definidas en `package-lock.json`.
-- **Orden de `COPY`:** copiar primero `package.json` y `package-lock.json` permite reutilizar la capa de dependencias mientras dichos archivos no cambien.
-- **Usuario no privilegiado:** la API se ejecuta utilizando el usuario `node` provisto por la imagen oficial, evitando ejecutar el proceso como `root`.
-- **Frontend multi-etapa:** Node.js se utiliza únicamente para generar `dist/`. La imagen final contiene nginx y los archivos compilados del frontend, pero no Node.js, npm, `node_modules` ni el código fuente.
-- **`.dockerignore`:** evita enviar archivos innecesarios o sensibles al contexto de construcción.
+Para comprobar que los contenedores estén funcionando:
+
+```bash
+docker compose ps
+```
+
+Después puedo ingresar a la aplicación desde el navegador utilizando el puerto del frontend configurado en `docker-compose.yaml`.
+
+Para detener los contenedores:
+
+```bash
+docker compose down
+```
+
+Los datos de MySQL quedan guardados en un volumen, por lo que no se pierden al detener y volver a iniciar los contenedores.
+
+## 2. Ejecutar con Kubernetes y Helm
+
+Para esta opción necesito tener acceso al clúster Kubernetes y Helm instalado.
+
+El clúster también debe contar con el almacenamiento necesario y un Ingress Controller configurado.
+
+Primero compruebo la conexión:
+
+```bash
+kubectl get nodes
+```
+
+Para instalar la aplicación utilizo el chart que está en `helm/reservas-app/`.
+
+Las credenciales de MySQL las configuro mediante un archivo privado llamado `values-tp8.yaml`, que no subo al repositorio.
+
+Desde la carpeta principal del proyecto ejecuto:
+
+```bash
+helm upgrade --install reservas-app ./helm/reservas-app \
+  --namespace reservas-app \
+  --create-namespace \
+  -f ~/Curso_Docker/privado/values-tp8.yaml \
+  --wait \
+  --timeout 5m
+```
+
+Para comprobar la instalación:
+
+```bash
+helm status reservas-app -n reservas-app
+```
+
+También puedo ver los recursos creados:
+
+```bash
+kubectl get all,cm,secret,pvc,ingress,hpa -n reservas-app
+```
+
+Una vez que el Ingress esté funcionando y tenga configurado el nombre en el archivo `hosts`, puedo ingresar desde:
+
+`http://reservas.local`
+
+## 3. Configuración
+
+En Kubernetes utilicé ConfigMaps para la configuración de la API y el frontend, y un Secret para las credenciales de MySQL.
+
+También configuré un PVC para conservar los datos de la base de datos cuando se recrea el Pod.
+
+La API tiene un HPA que permite aumentar o disminuir las réplicas según el consumo de CPU.
+
+## 4. Helm
+
+El chart de Helm contiene las plantillas de los doce objetos utilizados en el proyecto.
+
+Desde `values.yaml` puedo modificar configuraciones como las imágenes, las réplicas y el HPA.
+
+También puedo actualizar la aplicación con `helm upgrade` y volver a una versión anterior con `helm rollback`.
+
+## 5. Documentación
+
+En `ARQUITECTURA.md` dejé las respuestas a las preguntas del proyecto final y los problemas que tuve durante los prácticos.
+
+En `INFORME.md` incluí las pruebas y los resultados de funcionamiento.
+
